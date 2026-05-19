@@ -1,0 +1,34 @@
+# Host build outputs
+host/*.o
+host/secure_iiot
+host/secure_iiot_*
+host/optee_example_hello_world
+
+# TA build outputs
+ta/*.o
+ta/**/*.o
+ta/.*.cmd
+ta/**/.*.cmd
+ta/.*.d
+ta/**/.*.d
+ta/*.d
+ta/**/*.d
+ta/*.elf
+ta/*.stripped.elf
+ta/*.map
+ta/*.dmp
+ta/*.ta
+ta/ta.lds
+
+# CMake and local build directories
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+build/
+out/
+
+# Editor and OS noise
+.DS_Store
+*~
+*.swp
+*.swo
