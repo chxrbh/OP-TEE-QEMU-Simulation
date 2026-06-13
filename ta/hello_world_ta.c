@@ -545,6 +545,60 @@ static TEE_Result prepare_storage(uint32_t param_types, TEE_Param params[4])
 }
 
 /*
+ * Import key_material into a TEE transient AES object and discard it.
+ * This exercises the real TEE key-import path so the OP-TEE world-switch
+ * and secure-world key-loading cost are captured by host-side timing.
+ */
+static TEE_Result provision_key(uint32_t param_types, TEE_Param params[4])
+{
+	uint32_t exp_param_types = TEE_PARAM_TYPES(
+		TEE_PARAM_TYPE_MEMREF_INPUT,
+		TEE_PARAM_TYPE_MEMREF_OUTPUT,
+		TEE_PARAM_TYPE_NONE,
+		TEE_PARAM_TYPE_NONE);
+
+	const kmm_provision_input_t *input;
+	kmm_provision_result_t *result;
+	TEE_ObjectHandle key_handle = TEE_HANDLE_NULL;
+	TEE_Attribute key_attr;
+	TEE_Result res;
+
+	if (param_types != exp_param_types)
+		return TEE_ERROR_BAD_PARAMETERS;
+	if (params[0].memref.size < sizeof(*input) ||
+	    params[1].memref.size < sizeof(*result))
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	input  = (const kmm_provision_input_t *)params[0].memref.buffer;
+	result = (kmm_provision_result_t *)params[1].memref.buffer;
+	TEE_MemFill(result, 0, sizeof(*result));
+
+	IMSG("KMM provision: fog_id=%u from_fog_id=%u window_id=%u",
+	     input->fog_id, input->from_fog_id, input->window_id);
+
+	res = TEE_AllocateTransientObject(TEE_TYPE_AES, 128, &key_handle);
+	if (res != TEE_SUCCESS) {
+		result->status = 1;
+		return res;
+	}
+
+	TEE_InitRefAttribute(&key_attr, TEE_ATTR_SECRET_VALUE,
+			     input->key_material, 16);
+	res = TEE_PopulateTransientObject(key_handle, &key_attr, 1);
+	TEE_FreeTransientObject(key_handle);
+
+	if (res != TEE_SUCCESS) {
+		result->status = 2;
+		return res;
+	}
+
+	IMSG("KMM provision: delegated key imported successfully");
+	result->status = 0;
+	params[1].memref.size = sizeof(*result);
+	return TEE_SUCCESS;
+}
+
+/*
  * Called when a TA is invoked. sess_ctx hold that value that was
  * assigned by TA_OpenSessionEntryPoint(). The rest of the paramters
  * comes from normal world.
@@ -564,6 +618,8 @@ TEE_Result TA_InvokeCommandEntryPoint(void __unused *sess_ctx,
 		return process_sensor_packet(param_types, params);
 	case TA_HELLO_WORLD_CMD_PREPARE_STORAGE:
 		return prepare_storage(param_types, params);
+	case TA_HELLO_WORLD_CMD_PROVISION_KEY:
+		return provision_key(param_types, params);
 	default:
 		return TEE_ERROR_BAD_PARAMETERS;
 	}

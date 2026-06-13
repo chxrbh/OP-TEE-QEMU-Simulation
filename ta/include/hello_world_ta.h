@@ -21,10 +21,14 @@
 #define TA_HELLO_WORLD_CMD_DEC_VALUE		1
 #define TA_HELLO_WORLD_CMD_PROCESS_SENSOR_PACKET	2
 #define TA_HELLO_WORLD_CMD_PREPARE_STORAGE	3
+#define TA_HELLO_WORLD_CMD_PROVISION_KEY	4
 
 /* Backward-compatible alias for the previous prototype stage. */
 #define TA_HELLO_WORLD_CMD_PROCESS_READING \
 	TA_HELLO_WORLD_CMD_PROCESS_SENSOR_PACKET
+
+#define TA_SECURE_IIOT_CMD_PROVISION_KEY \
+	TA_HELLO_WORLD_CMD_PROVISION_KEY
 
 /*
  * Current Secure IIoT stage:
@@ -126,5 +130,17 @@ typedef struct {
 	uint8_t tag[16];
 	uint32_t status;
 } storage_cloud_object_t;
+
+/* KMM key provisioning: Normal World passes key material; TA imports it. */
+typedef struct {
+	uint32_t fog_id;
+	uint32_t from_fog_id;
+	uint32_t window_id;
+	uint8_t  key_material[16];
+} kmm_provision_input_t;
+
+typedef struct {
+	uint32_t status;
+} kmm_provision_result_t;
 
 #endif /*TA_HELLO_WORLD_H*/

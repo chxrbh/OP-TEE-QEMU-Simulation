@@ -68,4 +68,9 @@ TEEC_Result secure_iiot_invoke_storage_prep(
 	storage_cloud_object_t *cloud_object, uint64_t *latency_us,
 	uint32_t *err_origin);
 
+TEEC_Result secure_iiot_invoke_provision_key(
+	TEEC_Session *sess, const kmm_provision_input_t *input,
+	kmm_provision_result_t *result, uint64_t *latency_us,
+	uint32_t *err_origin);
+
 #endif /* SECURE_IIOT_HOST_COMMON_H */

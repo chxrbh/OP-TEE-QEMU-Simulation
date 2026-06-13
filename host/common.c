@@ -331,6 +331,37 @@ TEEC_Result secure_iiot_invoke_fog_processing(
 	return res;
 }
 
+TEEC_Result secure_iiot_invoke_provision_key(
+	TEEC_Session *sess, const kmm_provision_input_t *input,
+	kmm_provision_result_t *result, uint64_t *latency_us,
+	uint32_t *err_origin)
+{
+	TEEC_Operation op;
+	uint64_t start_us;
+	uint64_t end_us;
+	TEEC_Result res;
+
+	memset(result, 0, sizeof(*result));
+	memset(&op, 0, sizeof(op));
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_INPUT,
+					 TEEC_MEMREF_TEMP_OUTPUT,
+					 TEEC_NONE, TEEC_NONE);
+	op.params[0].tmpref.buffer = (void *)input;
+	op.params[0].tmpref.size = sizeof(*input);
+	op.params[1].tmpref.buffer = result;
+	op.params[1].tmpref.size = sizeof(*result);
+
+	start_us = secure_iiot_now_us();
+	res = TEEC_InvokeCommand(sess, TA_SECURE_IIOT_CMD_PROVISION_KEY,
+				 &op, err_origin);
+	end_us = secure_iiot_now_us();
+
+	if (latency_us)
+		*latency_us = secure_iiot_elapsed_us(start_us, end_us);
+
+	return res;
+}
+
 TEEC_Result secure_iiot_invoke_storage_prep(
 	TEEC_Session *sess, const storage_prep_input_t *input,
 	storage_cloud_object_t *cloud_object, uint64_t *latency_us,

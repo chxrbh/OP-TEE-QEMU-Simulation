@@ -10,6 +10,7 @@
 #include <err.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #define SECURE_IIOT_DELEGATE_VERSION "secure_iiot_delegate_demo v-debug-20260516-2213"
 
@@ -136,6 +137,40 @@ int main(void)
 		errx(1, "KMM delegation authorization failed");
 	if (kmm_provision_delegated_key(&kmm, 1, 2, window_id) != 0)
 		errx(1, "KMM delegated key provisioning failed");
+	{
+		kmm_provision_input_t prov_input;
+		kmm_provision_result_t prov_result;
+		uint64_t provision_latency_us = 0;
+
+		memset(&prov_input, 0, sizeof(prov_input));
+		prov_input.fog_id      = 2;
+		prov_input.from_fog_id = 1;
+		prov_input.window_id   = window_id;
+		/* Demo delegated key for Fog B scoped to Fog A's key space. */
+		prov_input.key_material[0]  = 0x20; prov_input.key_material[1]  = 0x21;
+		prov_input.key_material[2]  = 0x22; prov_input.key_material[3]  = 0x23;
+		prov_input.key_material[4]  = 0x24; prov_input.key_material[5]  = 0x25;
+		prov_input.key_material[6]  = 0x26; prov_input.key_material[7]  = 0x27;
+		prov_input.key_material[8]  = 0x28; prov_input.key_material[9]  = 0x29;
+		prov_input.key_material[10] = 0x2a; prov_input.key_material[11] = 0x2b;
+		prov_input.key_material[12] = 0x2c; prov_input.key_material[13] = 0x2d;
+		prov_input.key_material[14] = 0x2e; prov_input.key_material[15] = 0x2f;
+
+		res = secure_iiot_invoke_provision_key(&sess, &prov_input,
+						       &prov_result,
+						       &provision_latency_us,
+						       &err_origin);
+		if (res != TEEC_SUCCESS)
+			errx(1,
+			     "KMM provision TA InvokeCommand failed with code 0x%x origin 0x%x",
+			     res, err_origin);
+		if (prov_result.status != 0)
+			errx(1, "KMM provision TA returned status %u",
+			     prov_result.status);
+
+		printf("[KMM] TA-side key provisioning OP-TEE round-trip: %llu us\n",
+		       (unsigned long long)provision_latency_us);
+	}
 	printf("\n");
 
 	printf("[3] Processing\n");
