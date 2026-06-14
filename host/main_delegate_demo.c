@@ -104,6 +104,9 @@ int main(void)
 		.timestamp_ms = 1710000000003ULL,
 	};
 
+	setvbuf(stdout, NULL, _IONBF, 0);
+	printf("[START] secure_iiot_delegate_demo launching\n");
+
 	res = secure_iiot_open(&ctx, &sess, &err_origin);
 	if (res != TEEC_SUCCESS)
 		errx(1, "TEEC session setup failed with code 0x%x origin 0x%x",
