@@ -13,6 +13,7 @@
 #include <string.h>
 
 #define SECURE_IIOT_STORAGE_BENCH_ITERS 30
+#define SECURE_IIOT_PROVISION_BENCH_ITERS 30
 
 static int compare_u64(const void *a, const void *b)
 {
@@ -128,6 +129,12 @@ int main(int argc, char *argv[])
 	uint64_t storage_max;
 	uint64_t storage_p50;
 	uint64_t storage_p95;
+	uint64_t provision_latencies[SECURE_IIOT_PROVISION_BENCH_ITERS];
+	uint64_t provision_mean;
+	uint64_t provision_min;
+	uint64_t provision_max;
+	uint64_t provision_p50;
+	uint64_t provision_p95;
 	uint32_t fake_aggregate_ciphertext = 0;
 	BIGNUM *real_aggregate_ciphertext = NULL;
 	paillier_host_keypair_t paillier_kp = { 0 };
@@ -233,10 +240,58 @@ int main(int argc, char *argv[])
 			      &storage_p50, &storage_p95);
 	}
 
+	/* KMM provision key benchmark: warmup then measured iterations. */
+	{
+		kmm_provision_input_t prov_input;
+		kmm_provision_result_t prov_result;
+		uint32_t prov_total = SECURE_IIOT_WARMUP_ITERS +
+				      SECURE_IIOT_PROVISION_BENCH_ITERS;
+		uint32_t prov_measured = 0;
+
+		memset(&prov_input, 0, sizeof(prov_input));
+		prov_input.fog_id      = 2;
+		prov_input.from_fog_id = 1;
+		prov_input.window_id   = 1;
+		prov_input.key_material[0]  = 0x20; prov_input.key_material[1]  = 0x21;
+		prov_input.key_material[2]  = 0x22; prov_input.key_material[3]  = 0x23;
+		prov_input.key_material[4]  = 0x24; prov_input.key_material[5]  = 0x25;
+		prov_input.key_material[6]  = 0x26; prov_input.key_material[7]  = 0x27;
+		prov_input.key_material[8]  = 0x28; prov_input.key_material[9]  = 0x29;
+		prov_input.key_material[10] = 0x2a; prov_input.key_material[11] = 0x2b;
+		prov_input.key_material[12] = 0x2c; prov_input.key_material[13] = 0x2d;
+		prov_input.key_material[14] = 0x2e; prov_input.key_material[15] = 0x2f;
+
+		memset(provision_latencies, 0, sizeof(provision_latencies));
+
+		for (i = 0; i < prov_total; i++) {
+			uint64_t prov_latency_us = 0;
+
+			res = secure_iiot_invoke_provision_key(
+				&sess, &prov_input, &prov_result,
+				&prov_latency_us, &err_origin);
+			if (res != TEEC_SUCCESS)
+				errx(1,
+				     "Provision TA InvokeCommand failed with code 0x%x origin 0x%x",
+				     res, err_origin);
+			if (prov_result.status != 0)
+				errx(1, "Provision TA returned status %u",
+				     prov_result.status);
+
+			if (i >= SECURE_IIOT_WARMUP_ITERS)
+				provision_latencies[prov_measured++] =
+					prov_latency_us;
+		}
+	}
+
+	compute_stats(provision_latencies, SECURE_IIOT_PROVISION_BENCH_ITERS,
+		      &provision_mean, &provision_min, &provision_max,
+		      &provision_p50, &provision_p95);
+
 	printf("Secure IIoT OP-TEE Benchmark\n");
 	printf("warmup_iterations,%u\n", SECURE_IIOT_WARMUP_ITERS);
 	printf("measured_iterations,%u\n", measured_iterations);
 	printf("storage_iterations,%u\n", SECURE_IIOT_STORAGE_BENCH_ITERS);
+	printf("provision_iterations,%u\n", SECURE_IIOT_PROVISION_BENCH_ITERS);
 	printf("aes_gcm,real\n");
 	printf("paillier,%s\n", saw_real_paillier ? "real_ta_encrypt" :
 						 "mocked");
@@ -264,6 +319,11 @@ int main(int argc, char *argv[])
 		printf("storage_ta_p95_us,%llu\n",
 		       (unsigned long long)storage_p95);
 	}
+	printf("provision_ta_mean_us,%llu\n", (unsigned long long)provision_mean);
+	printf("provision_ta_min_us,%llu\n",  (unsigned long long)provision_min);
+	printf("provision_ta_max_us,%llu\n",  (unsigned long long)provision_max);
+	printf("provision_ta_p50_us,%llu\n",  (unsigned long long)provision_p50);
+	printf("provision_ta_p95_us,%llu\n",  (unsigned long long)provision_p95);
 	printf("\n");
 	if (saw_real_paillier)
 		printf("Results measure OP-TEE round-trip, real AES-GCM, and TA-side real Paillier encryption. Use secure_iiot_full_crypto_bench for storage-prep real Paillier decrypt.\n");
