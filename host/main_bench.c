@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define SECURE_IIOT_BENCH_VERSION "secure_iiot_bench v-20260614-provision"
 #define SECURE_IIOT_STORAGE_BENCH_ITERS 30
 #define SECURE_IIOT_PROVISION_BENCH_ITERS 30
 
@@ -141,6 +142,8 @@ int main(int argc, char *argv[])
 	int saw_real_paillier = 0;
 	uint32_t i;
 	uint32_t measured_index = 0;
+
+	printf("[VERSION] %s\n", SECURE_IIOT_BENCH_VERSION);
 
 	fog_latencies = calloc(measured_iterations, sizeof(*fog_latencies));
 	if (!fog_latencies)
